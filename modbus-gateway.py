@@ -1,16 +1,13 @@
 #/usr/bin/env python
 
-import sys
 import fcntl
 import struct
-import time
 import socket
 import serial
 import logging
 import crc16
 
-
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
 logger = logging.getLogger('Modbus Gateway')
 
 class ModbusGateway:
@@ -67,16 +64,21 @@ class ModbusGateway:
                 self.serial_connect()
             self.tcp_start()
             while True:
-                logger.info("Waiting for incoming TCP message")
-                data = self.connection.recv(12)
-                if not data:
-                    break
-                logger.debug("TCP Request {}".format(":".join("{:02X}".format(ord(c)) for c in data)))
-                rtu_msg = data[6:] + crc16.calculate(data[6:])
-                rtu_response = self.rtu_request(rtu_msg)
-                tcp_response = data[0:5] + chr(ord(rtu_response[2]) + 2) + rtu_response[0:-2]
-                self.connection.send(tcp_response)
-
+                try:
+                    logger.info("Waiting for incoming TCP message")
+                    data = self.connection.recv(12)
+                    if not data:
+                        break
+                    logger.debug("TCP Request {}".format(":".join("{:02X}".format(ord(c)) for c in data)))
+                    rtu_msg = data[6:] + crc16.calculate(data[6:])
+                    rtu_response = self.rtu_request(rtu_msg)
+                    tcp_response = data[0:5] + chr(ord(rtu_response[2]) + 2) + rtu_response[0:-2]
+                    self.connection.send(tcp_response)
+                except KeyboardInterrupt:
+                    logger.info("Keyboard Interrupt (Ctrl+C) received, stopping Gateway now!"
+                finally:
+                    self.serial.close()
+                    self.connection.close()
 
 if __name__ == "__main__":
     mg = ModbusGateway()
