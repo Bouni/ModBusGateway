@@ -7,7 +7,7 @@ import serial
 import logging
 import crc16
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s.%(msecs)03d: %(levelname)s - %(message)s')
 logger = logging.getLogger('Modbus Gateway')
 
 class ModbusGateway:
@@ -43,7 +43,6 @@ class ModbusGateway:
         logger.info("Waiting for incoming TCP connection")
         self.connection, self.client = self.socket.accept()
         logger.debug('TCP Connection from {}, port {}'.format(self.client[0], self.client[1]))
-        logger.debug('{}'.format(self.socket))
 
     def rtu_request(self, request):
         logger.debug("RTU Request {}".format(":".join("{:02X}".format(ord(c)) for c in request)))
@@ -64,21 +63,16 @@ class ModbusGateway:
                 self.serial_connect()
             self.tcp_start()
             while True:
-                try:
-                    logger.info("Waiting for incoming TCP message")
-                    data = self.connection.recv(12)
-                    if not data:
-                        break
-                    logger.debug("TCP Request {}".format(":".join("{:02X}".format(ord(c)) for c in data)))
-                    rtu_msg = data[6:] + crc16.calculate(data[6:])
-                    rtu_response = self.rtu_request(rtu_msg)
-                    tcp_response = data[0:5] + chr(ord(rtu_response[2]) + 2) + rtu_response[0:-2]
-                    self.connection.send(tcp_response)
-                except KeyboardInterrupt:
-                    logger.info("Keyboard Interrupt (Ctrl+C) received, stopping Gateway now!"
-                finally:
-                    self.serial.close()
-                    self.connection.close()
+                logger.info("Waiting for incoming TCP message")
+                data = self.connection.recv(12)
+                if not data:
+                    break
+                logger.debug("TCP Request {}".format(":".join("{:02X}".format(ord(c)) for c in data)))
+                rtu_msg = data[6:] + crc16.calculate(data[6:])
+                rtu_response = self.rtu_request(rtu_msg)
+                tcp_response = data[0:5] + chr(ord(rtu_response[2]) + 2) + rtu_response[0:-2]
+                logger.debug("TCP Response {}".format(":".join("{:02X}".format(ord(c)) for c in tcp_response)))
+                self.connection.send(tcp_response)
 
 if __name__ == "__main__":
     mg = ModbusGateway()
