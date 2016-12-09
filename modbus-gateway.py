@@ -14,7 +14,7 @@ logger.setFormatter(logging.Formatter("%(asctime)s.%(msecs)03d - %(levelname)s :
 
 class ModbusGateway(SocketServer.BaseRequestHandler):
 
-    def __init__(self):
+    def setup(self):
         self.load_config()
         self.serial = serial.Serial()
         self.serial_config()
