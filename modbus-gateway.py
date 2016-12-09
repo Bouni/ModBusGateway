@@ -13,15 +13,13 @@ logger.setFormatter(logging.Formatter("%(asctime)s.%(msecs)03d - %(levelname)s :
 
 class ModbusGateway(SocketServer.BaseRequestHandler):
 
-    def __init__(self, port='/dev/ttyO4', baud=19200):
+    def __init__(self):
         self.serial = serial.Serial()
-        self.port = serial_port
-        self.baud = baud
         self.serial_config()
 
     def serial_config(self):
-        self.serial.port = self.port
-        self.serial.baudrate = self.baud
+        self.serial.port = '/dev/ttyO4'
+        self.serial.baudrate = 19200
         self.serial.stopbits = 1
         self.serial.parity = 'E'
         self.serial.bytesize = 8
@@ -66,7 +64,6 @@ class ModbusGateway(SocketServer.BaseRequestHandler):
         logger.debug("TCP Response {}".format(":".join("{:02X}".format(ord(c)) for c in tcp_response)))
         # return converted TCP response
         self.request.sendall(tcp_response())
-
 
 if __name__ == "__main__":
     server = SocketServer.TCPServer(('', 502), ModbusGateway)
