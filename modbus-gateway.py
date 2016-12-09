@@ -63,19 +63,19 @@ class ModbusGateway(SocketServer.BaseRequestHandler):
             # read first three bytes of the response to check for errors
             rtu_response = self.serial.read(3)
             if ord(rtu_response[1]) > 0x80:
-                logger.debug("Modbus Error {}".format(":".join("{:02X}".format(ord(c)) for c in rtu_response)))
+                logger.debug("RTU Error Response {}".format(":".join("{:02X}".format(ord(c)) for c in rtu_response)))
                 tcp_response = tcp_request[0:5] + chr(3) + rtu_response
                 logger.debug("TCP Error Response {}".format(":".join("{:02X}".format(ord(c)) for c in tcp_response)))
                 self.request.sendall(tcp_response)
-                return
-            # if no error, read number of bytes indicated in RTU response
-            rtu_response += self.serial.read(ord(rtu_response[2]) + 2)
-            logger.debug("RTU Response {}".format(":".join("{:02X}".format(ord(c)) for c in rtu_response)))
-            # convert ModbusRTU response into a Modbus TCP response 
-            tcp_response = tcp_request[0:5] + chr(ord(rtu_response[2]) + 2) + rtu_response[0:-2]
-            logger.debug("TCP Response {}".format(":".join("{:02X}".format(ord(c)) for c in tcp_response)))
-            # return converted TCP response
-            self.request.sendall(tcp_response)
+            else:
+                # if no error, read number of bytes indicated in RTU response
+                rtu_response += self.serial.read(ord(rtu_response[2]) + 2)
+                logger.debug("RTU Response {}".format(":".join("{:02X}".format(ord(c)) for c in rtu_response)))
+                # convert ModbusRTU response into a Modbus TCP response 
+                tcp_response = tcp_request[0:5] + chr(ord(rtu_response[2]) + 2) + rtu_response[0:-2]
+                logger.debug("TCP Response {}".format(":".join("{:02X}".format(ord(c)) for c in tcp_response)))
+                # return converted TCP response
+                self.request.sendall(tcp_response)
 
     def finish(self):
         self.serial.close()
