@@ -2,6 +2,7 @@
 
 import fcntl
 import struct
+import ConfigParser
 import SocketServer
 import serial
 import logging
@@ -14,18 +15,26 @@ logger.setFormatter(logging.Formatter("%(asctime)s.%(msecs)03d - %(levelname)s :
 class ModbusGateway(SocketServer.BaseRequestHandler):
 
     def __init__(self):
+        self.load_config()
         self.serial = serial.Serial()
         self.serial_config()
 
+    def load_config(self):
+        self.config = ConfigParser.RawConfigParser()
+        self.config.read('modbus-gateway.cfg')
+
     def serial_config(self):
-        self.serial.port = '/dev/ttyO4'
-        self.serial.baudrate = 19200
-        self.serial.stopbits = 1
-        self.serial.parity = 'E'
-        self.serial.bytesize = 8
-        self.serial.timeout = 5
+        self.serial.port = self.config.get("ModbusRTU", "port")
+        self.serial.baudrate = self.config.get("ModbusRTU", "baudrate")
+        self.serial.stopbits = self.config.get("ModbusRTU", "stopbits")
+        self.serial.parity = self.config.get("ModbusRTU", "partity")
+        self.serial.bytesize = self.config.get("ModbusRTU", "bytesize")
+        self.serial.timeout = self.config.get("ModbusRTU", "timeout")
         self.serial_connect()
-        RS485_CONFIG = struct.pack('IIIIIIII',0x21,0,0,7,0,0,0,0)
+        RS485_CONFIG = struct.pack('IIIIIIII',
+            0x21,0,0,
+            self.config.get("ModbusRTU", "gpio"),
+            0,0,0,0)
         fcntl.ioctl(self.serial.fileno(), 0x542F, RS485_CONFIG)
 
     def serial_connect(self):
@@ -66,5 +75,7 @@ class ModbusGateway(SocketServer.BaseRequestHandler):
         self.request.sendall(tcp_response())
 
 if __name__ == "__main__":
-    server = SocketServer.TCPServer(('', 502), ModbusGateway)
+    config = ConfigParser.RawConfigParser()
+    config.read('modbus-gateway.cfg')
+    server = SocketServer.TCPServer((config.get("ModbusTCP", "host"), config.get("ModbusTCP","port")), ModbusGateway)
     server.serve_forever()
