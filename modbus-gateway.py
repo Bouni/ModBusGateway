@@ -9,30 +9,7 @@ import crc16
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s.%(msecs)03d: %(levelname)s - %(message)s')
 logger = logging.getLogger('Modbus Gateway')
-
-class ModbusFrame:
-    
-    def __init__(self, data):
-        self._tcp_request = data
-        self._rtu_request = None
-        self._rtu_response = None
-        self._tcp_response = None
-        logger.debug("TCP Request {}".format(":".join("{:02X}".format(ord(c)) for c in self._tcp_request)))
-
-    def rtu_request(self):
-        self._rtu_request = self._tcp_request[6:] + crc16.calculate(self._tcp_request[6:])
-        logger.debug("RTU Request {}".format(":".join("{:02X}".format(ord(c)) for c in self._rtu_request)))
-        return _rtu_request 
-
-    def rtu_response(self, data):
-        self._rtu_response = data
-        logger.debug("RTU Response {}".format(":".join("{:02X}".format(ord(c)) for c in self._rtu_response)))
-
-    def tcp_response(self):
-        self._tcp_response = _tcp_request[0:5] + chr(ord(self._rtu_response[2]) + 2) + self._rtu_response[0:-2]
-        logger.debug("TCP Response {}".format(":".join("{:02X}".format(ord(c)) for c in self._tcp_response)))
-        return self._tcp_response
-
+logger.setFormatter(logging.Formatter("%(asctime)s.%(msecs)03d - %(levelname)s : %(message)s","%Y.%m.%d %H:%M:%S"))
 
 class ModbusGateway(SocketServer.BaseRequestHandler):
 
@@ -63,21 +40,32 @@ class ModbusGateway(SocketServer.BaseRequestHandler):
         if not self.serial.isOpen():
             self.serial_connect()
         logger.info("Waiting for incoming TCP message")
-        # pass received tcp data to ModbusFrame
-        modbus_frame = ModbusFrame(self.request.recv(12))
-        # write ModbusFrame RTU conversion to serial port
-        self.serial.write(modbus_frame.rtu_request())
+        # receive the ModbusTCP request
+        tcp_request = self.request.recv(12)
+        logger.debug("TCP Request {}".format(":".join("{:02X}".format(ord(c)) for c in tcp_request)))
+        # convert ModbusTCP request into a ModbusRTU request
+        rtu_request = tcp_request[6:] + crc16.calculate(tcp_request[6:])
+        logger.debug("RTU Request {}".format(":".join("{:02X}".format(ord(c)) for c in rtu_request)))
+        # make sure that the input buffer is clean
+        self.serial.flush()
+        # send the ModbusRTU request 
+        self.serial.write(rtu_request) 
         # read first three bytes of the response to check for errors
         rtu_response = self.serial.read(3)
-        if ord(rtu_response[0]) > 0x80:
+        if ord(rtu_response[1]) > 0x80:
             logger.debug("Modbus Error {}".format(":".join("{:02X}".format(ord(c)) for c in rtu_response)))
+            tcp_response = tcp_request[0:5] + chr(3) + rtu_response
+            logger.debug("TCP Error Response {}".format(":".join("{:02X}".format(ord(c)) for c in tcp_response)))
+            self.request.sendall(tcp_response())
             return
         # if no error, read number of bytes indicated in RTU response
         rtu_response += self.serial.read(ord(rtu_response[2]) + 2)
-        # pass received RTU data to ModbusFrame
-        modbus_frame.rtu_response(rtu_response)
+        logger.debug("RTU Response {}".format(":".join("{:02X}".format(ord(c)) for c in rtu_response)))
+        # convert ModbusRTU response into a Modbus TCP response 
+        tcp_response = tcp_request[0:5] + chr(ord(self.rtu_response[2]) + 2) + rtu_response[0:-2]
+        logger.debug("TCP Response {}".format(":".join("{:02X}".format(ord(c)) for c in tcp_response)))
         # return converted TCP response
-        self.request.sendall(modbus_frame.tcp_response())
+        self.request.sendall(tcp_response())
 
 
 if __name__ == "__main__":
