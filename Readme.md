@@ -12,7 +12,7 @@ The gateway receives a ModbusTCP frame, translates it into a ModbusRTU frame, ta
 
 How to use:
 ```
-git clone https://github.com/Bouni/ModBusGateway
+git clone https://github.com/Bouni/ModBusGateway.git
 cd ModBusGateway
 python modbus-gateway.py
 ```
