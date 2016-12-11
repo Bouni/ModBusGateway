@@ -7,3 +7,5 @@ I run it on a [BeagleBone Green](http://beagleboard.org/Green) equiped with a [W
 
 I've only tested Modbus functions [01,02,03,04,06] so far because i don't need any other functions for my purpose.
 Maybe the gateway need to be exteded to support other functions.
+
+The gateway receives a ModbusTCP frame, translates it into a ModbusRTU frame, takes the ModbusRTU response and converts that into the ModbusTCP response for the initial request.
