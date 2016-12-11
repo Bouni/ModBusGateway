@@ -11,10 +11,11 @@ Maybe the gateway need to be exteded to support other functions.
 The gateway receives a ModbusTCP frame, translates it into a ModbusRTU frame, takes the ModbusRTU response and converts that into the ModbusTCP response for the initial request.
 
 How to use:
-
-`git clone https://github.com/Bouni/ModBusGateway`
-`cd ModBusGateway`
-`python modbus-gateway.py`
+```
+git clone https://github.com/Bouni/ModBusGateway
+cd ModBusGateway
+python modbus-gateway.py
+```
 
 The configuration can be changed by editing the modbus-gateway.cfg file.
 
